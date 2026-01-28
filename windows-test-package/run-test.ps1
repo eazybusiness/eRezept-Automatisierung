@@ -30,8 +30,60 @@ function Assert-ToolExists {
     return $true
 }
 
+function Resolve-GhostscriptExe {
+    # Try configured path first
+    if ($Config.GhostscriptExe -and (Test-Path $Config.GhostscriptExe)) {
+        return $Config.GhostscriptExe
+    }
+
+    $candidates = @(
+        ".\\tools\\ghostscript\\bin\\gswin64c.exe",
+        ".\\tools\\ghostscript\\bin\\gswin32c.exe"
+    )
+
+    foreach ($p in $candidates) {
+        if (Test-Path $p) {
+            return $p
+        }
+    }
+
+    # Typical install locations
+    $pf = $env:ProgramFiles
+    if ($pf) {
+        $gsRoot = Join-Path $pf "gs"
+        if (Test-Path $gsRoot) {
+            $bins = Get-ChildItem -Path $gsRoot -Recurse -Filter "gswin*c.exe" -ErrorAction SilentlyContinue
+            foreach ($b in $bins) {
+                if ($b.FullName -match "gswin(64|32)c\.exe$") {
+                    return $b.FullName
+                }
+            }
+        }
+    }
+
+    # Try PATH
+    try {
+        $out = & cmd.exe /c "where gswin64c.exe" 2> $null
+        if ($out -and (Test-Path $out[0])) { return $out[0] }
+    }
+    catch { }
+
+    try {
+        $out2 = & cmd.exe /c "where gswin32c.exe" 2> $null
+        if ($out2 -and (Test-Path $out2[0])) { return $out2[0] }
+    }
+    catch { }
+
+    return $null
+}
+
 function Preflight-Checks {
     $ok = $true
+
+    $gsExe = Resolve-GhostscriptExe
+    if ($gsExe) {
+        $Config.GhostscriptExe = $gsExe
+    }
 
     $ok = $ok -and (Assert-ToolExists -Path $Config.GhostscriptExe -ToolName "Ghostscript (gswin64c.exe)")
     $ok = $ok -and (Assert-ToolExists -Path $Config.TesseractExe -ToolName "Tesseract (tesseract.exe)")
