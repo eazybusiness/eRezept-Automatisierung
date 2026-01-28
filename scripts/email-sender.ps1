@@ -27,6 +27,12 @@ function Send-PDFViaKIM {
     )
     
     try {
+        if ($KIMConfig.ContainsKey('EnableSend') -and -not $KIMConfig.EnableSend) {
+            Write-Log "EnableSend ist deaktiviert. Überspringe E-Mail-Versand (Dry-Run) an: $RecipientEmail" -Status "INFO" -Patient $PatientName -Pharmacy $ApoKey -FileHash $FileHash
+            $null = Move-ToSentFolder -PDFPath $PDFPath -ApoKey $ApoKey
+            return $true
+        }
+
         $subject = $KIMConfig.EmailSubject -f $PatientName
         $body = Create-KIMEmailBody -PatientName $PatientName -ApoKey $ApoKey
         
@@ -149,6 +155,11 @@ function Test-KIMConnection {
         Testet die Verbindung zum KIM-SMTP-Server
     #>
     try {
+        if ($KIMConfig.ContainsKey('EnableSend') -and -not $KIMConfig.EnableSend) {
+            Write-Log "EnableSend ist deaktiviert. Überspringe KIM-Verbindungstest (Dry-Run)." -Status "INFO"
+            return $true
+        }
+
         Write-Log "Teste KIM-Verbindung..." -Status "INFO"
         
         $testParams = @{

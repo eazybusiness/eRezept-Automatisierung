@@ -116,7 +116,7 @@ function Get-FileHash {
     param([string]$FilePath)
     
     try {
-        $hash = Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
+        $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
         return $hash.Hash
     }
     catch {
@@ -188,6 +188,11 @@ function Send-ErrorNotification {
     )
     
     try {
+        if ($KIMConfig.ContainsKey('EnableSend') -and -not $KIMConfig.EnableSend) {
+            Write-Log "EnableSend ist deaktiviert. Überspringe Fehlerbenachrichtigung (Dry-Run)." -Status "INFO"
+            return
+        }
+
         if (-not $ErrorConfig.EnableErrorNotifications -or -not $KIMConfig.ErrorEmailTo) {
             return
         }

@@ -39,12 +39,14 @@ $CSVConfig = @{
 
 # ==================== KIM-DIENST ====================
 $KIMConfig = @{
-    SmtpServer = "kv.dox.kim.telematik"
+    # SmtpServer = "kv.dox.kim.telematik"
+    SmtpServer = "testserver"
     SmtpPort = 587
     UseSSL = $true
     EmailFrom = "praxis@domain.de"  # Anpassen!
     EmailSubject = "eRezept für {0}"
-    
+    EnableSend = $false
+     
     # Fehlerbenachrichtigung
     ErrorEmailTo = "error@domain.de"  # Anpassen!
 }

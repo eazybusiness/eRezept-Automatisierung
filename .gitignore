@@ -2,11 +2,18 @@
 *.zip
 *.pdf
 *.csv
+*.CSV
 *.docx
 # Python / venv (falls du mal Tools mit Python nutzt)
 .venv/
 __pycache__/
 *.pyc
+
+# Local runtime/test folders
+input/
+logs/
+temp/
+tools/
 
 # Editor/OS junk
 .DS_Store

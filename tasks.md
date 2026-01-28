@@ -11,6 +11,11 @@
 - [ ] **Fehler-Email**: Empfänger für UNKLAR/FEHLER Meldungen
 - [ ] **Performance**: Batch-Verarbeitung für OCR
 
+### 1.3 Test-Sicherheit (kein Versand)
+- [x] **Dry-Run/NoSend**: `EnableSend = $false` als Default, damit im Test keine E-Mails versendet werden
+- [x] **Test-SMTP Host**: Default auf `testserver`, produktiver Host bleibt auskommentiert
+- [ ] **Test-Checkliste**: Dokumentieren wie man den Testmodus auf Windows Server 2008 R2 ausführt
+
 ### 1.2 Entwicklungsumgebung vorbereiten
 - [ ] PowerShell Core auf Linux installieren (für Syntax-Check)
 - [ ] Test-Verzeichnisstruktur anlegen
@@ -45,6 +50,8 @@
   - Funktion: `Test-DuplicateFile`
   - UNKLAR-Ordner Handling
 
+- [x] **Hash-Bugfix**: Namenskonflikt/Rekursion bei `Get-FileHash` behoben (Built-in Cmdlet via Modulqualifizierung)
+
 ### 2.2 Logging System implementieren
 - [ ] **Logging Module** (`scripts/logger.ps1`)
   - JSONL Format implementieren
@@ -53,7 +60,7 @@
   - Datensparsame Patient-Identifier
 
 ### 2.3 Hauptskript Struktur
-- [ ] Konfigurationsbereich auslagern (`config/settings.ps1`)
+- [x] Konfigurationsbereich auslagern (`config/settings.ps1`)
 - [ ] Modul-Imports und Error-Handling
 - [ ] Hauptverarbeitungsschleife mit Scan-Interval
 

@@ -43,10 +43,12 @@ $Config = @{
     EmailColumn = "KIM_Email"
     
     # E-Mail Konfiguration
-    SmtpServer = "localhost"          # KIM-Dienst SMTP
+    # SmtpServer = "kv.dox.kim.telematik"  # KIM-Dienst SMTP (Produktiv)
+    SmtpServer = "testserver"          # Test-Host, verhindert versehentlichen Versand
     SmtpPort = 587
     EmailFrom = "praxis@domain.de"
     EmailSubject = "eRezept für {0}"
+    EnableSend = $false
     
     # Überwachungseinstellungen
     ScanInterval = 30                 # Sekunden zwischen Scans
@@ -116,7 +118,7 @@ function Get-FileHash {
     param([string]$FilePath)
     
     try {
-        $hash = Get-FileHash -Path $FilePath -Algorithm SHA256
+        $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm SHA256
         return $hash.Hash
     }
     catch {
@@ -283,6 +285,11 @@ function Send-PDFViaKIM {
     )
     
     try {
+        if ($Config.ContainsKey('EnableSend') -and -not $Config.EnableSend) {
+            Write-Log "EnableSend ist deaktiviert. Überspringe E-Mail-Versand (Dry-Run) an: $RecipientEmail" -Status "INFO" -Patient $PatientName -Pharmacy $PharmacyName -FileHash $FileHash
+            return $true
+        }
+
         $subject = $Config.EmailSubject -f $PatientName
         $body = "Sehr geehrte Apotheke,`n`nAnbei das eRezept für Patienten: $PatientName`n`nMit freundlichen Grüßen`nIhre Praxis"
         

@@ -96,6 +96,11 @@ C:\Daten\ERP\
 - **Backup**: Konfiguration und Logs sichern
 - **Rollback**: Deinstallations-Skript
 
+### Testmodus (kein Versand)
+- **EnableSend-Schalter**: Standardmäßig ist `EnableSend = $false`, sodass kein SMTP-Versand stattfindet.
+- **SMTP-Host im Test**: Standardmäßig wird ein Test-Host (z.B. `testserver`) verwendet; der produktive Host bleibt auskommentiert.
+- **Ziel**: End-to-End Test (Routing, Logging, Duplikatschutz) ohne Datenversand.
+
 ## Offene Punkte (Geklärt)
 
 ### PDF-Struktur ✅
@@ -116,6 +121,9 @@ C:\Daten\ERP\
 - Alternativen: Outlook oder Thunderbird
 - SMTP-Versand über kv.dox Clientmodul/Proxy
 - E-Mail-Format: Standard mit PDF-Anhang
+
+### Bugfixes (Stabilität) ✅
+- **Hash-Berechnung**: Namenskonflikt/Rekursion bei `Get-FileHash` behoben (Aufruf des Built-in Cmdlets via Modulqualifizierung), um Abstürze zu vermeiden.
 
 ## Offene Punkte (Noch zu klären)
 
