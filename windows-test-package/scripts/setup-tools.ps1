@@ -107,6 +107,17 @@ function Install-Tesseract {
             Write-Log "Lade deutsches Sprachpaket herunter..." -Status "INFO"
             $tessdataUrl = "https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata"
             $tessdataPath = Join-Path $Config.ToolsFolder "tesseract\tessdata\deu.traineddata"
+
+            $offlineDeu = Join-Path $downloadsFolder "deu.traineddata"
+            if (-not (Test-Path $tessdataPath) -and (Test-Path $offlineDeu)) {
+                try {
+                    Copy-Item -Path $offlineDeu -Destination $tessdataPath -Force
+                    Write-Log "Offline-Modus: deu.traineddata aus tools\\downloads\\ kopiert." -Status "INFO"
+                }
+                catch {
+                    Write-Log "Offline-Modus: Kopieren von deu.traineddata fehlgeschlagen: $($_.Exception.Message)" -Status "ERROR"
+                }
+            }
             
             if (Test-Path $tessdataPath) {
                 Write-Log "Deutsches Sprachpaket bereits vorhanden: $tessdataPath" -Status "INFO"
