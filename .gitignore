@@ -1,0 +1,17 @@
+# Ignore archives and binary docs
+*.zip
+*.pdf
+*.csv
+*.docx
+# Python / venv (falls du mal Tools mit Python nutzt)
+.venv/
+__pycache__/
+*.pyc
+
+# Editor/OS junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
