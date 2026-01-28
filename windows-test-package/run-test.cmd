@@ -1,11 +1,22 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 
-REM Run the PowerShell test runner with ExecutionPolicy bypassed.
-REM This avoids needing Set-ExecutionPolicy (often blocked on Server 2008 R2 / PS2).
+set "SCRIPT_DIR=%~dp0"
+set "PS_EXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 
-set SCRIPT_DIR=%~dp0
+if not exist "%PS_EXE%" (
+  echo [ERROR] PowerShell wurde nicht gefunden: "%PS_EXE%"
+  echo Bitte stelle sicher, dass PowerShell 2.0 installiert ist.
+  pause
+  exit /b 1
+)
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%run-test.ps1"
+"%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%run-test.ps1"
+set "EXITCODE=%ERRORLEVEL%"
+
+if not "%EXITCODE%"=="0" (
+  echo [ERROR] run-test.ps1 wurde mit ExitCode %EXITCODE% beendet.
+  pause
+)
 
 endlocal
