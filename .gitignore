@@ -1,9 +1,5 @@
 # Ignore archives and binary docs
 *.zip
-*.pdf
-*.csv
-*.CSV
-*.docx
 # Python / venv (falls du mal Tools mit Python nutzt)
 .venv/
 __pycache__/
@@ -14,6 +10,10 @@ input/
 logs/
 temp/
 tools/
+
+# Allow sample mapping files in the self-contained Windows test package
+!windows-test-package/data/*.csv
+!windows-test-package/data/*.CSV
 
 # Editor/OS junk
 .DS_Store
