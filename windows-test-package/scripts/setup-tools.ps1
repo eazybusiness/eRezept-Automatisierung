@@ -85,8 +85,12 @@ function Install-Tesseract {
         $tesseractInstaller = Join-Path $downloadsFolder "tesseract-installer.exe"
         
         # Download
-        if (-not (Download-File -Url $tesseractUrl -OutputPath $tesseractInstaller)) {
-            return $false
+        if (-not (Test-Path $tesseractInstaller)) {
+            if (-not (Download-File -Url $tesseractUrl -OutputPath $tesseractInstaller)) {
+                return $false
+            }
+        } else {
+            Write-Log "Nutze vorhandenen Tesseract Installer: $tesseractInstaller" -Status "INFO"
         }
         
         # Stiller Install in tools Ordner
@@ -104,7 +108,14 @@ function Install-Tesseract {
             $tessdataUrl = "https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata"
             $tessdataPath = Join-Path $Config.ToolsFolder "tesseract\tessdata\deu.traineddata"
             
-            if (Download-File -Url $tessdataUrl -OutputPath $tessdataPath) {
+            if (Test-Path $tessdataPath) {
+                Write-Log "Deutsches Sprachpaket bereits vorhanden: $tessdataPath" -Status "INFO"
+            }
+            elseif (-not (Download-File -Url $tessdataUrl -OutputPath $tessdataPath)) {
+                return $false
+            }
+
+            if (Test-Path $tessdataPath) {
                 Write-Log "Tesseract mit deutschem Sprachpaket installiert" -Status "INFO"
                 
                 # Konfiguration anpassen
@@ -150,8 +161,12 @@ function Install-Ghostscript {
         $ghostscriptInstaller = Join-Path $downloadsFolder "ghostscript-installer.exe"
         
         # Download
-        if (-not (Download-File -Url $ghostscriptUrl -OutputPath $ghostscriptInstaller)) {
-            return $false
+        if (-not (Test-Path $ghostscriptInstaller)) {
+            if (-not (Download-File -Url $ghostscriptUrl -OutputPath $ghostscriptInstaller)) {
+                return $false
+            }
+        } else {
+            Write-Log "Nutze vorhandenen Ghostscript Installer: $ghostscriptInstaller" -Status "INFO"
         }
         
         # Stiller Install
