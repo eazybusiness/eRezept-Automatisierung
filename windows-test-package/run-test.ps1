@@ -77,12 +77,85 @@ function Resolve-GhostscriptExe {
     return $null
 }
 
+function Resolve-TesseractExe {
+    if ($Config.TesseractExe -and (Test-Path $Config.TesseractExe)) {
+        return $Config.TesseractExe
+    }
+
+    $candidates = @(
+        ".\\tools\\tesseract\\tesseract.exe",
+        ".\\tools\\tesseract.exe",
+        "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+        "C:\\Program Files (x86)\\Tesseract-OCR\\tesseract.exe"
+    )
+
+    foreach ($p in $candidates) {
+        if (Test-Path $p) {
+            return $p
+        }
+    }
+
+    # Try PATH
+    try {
+        $out = & cmd.exe /c "where tesseract.exe" 2> $null
+        if ($out -and (Test-Path $out[0])) { return $out[0] }
+    }
+    catch { }
+
+    return $null
+}
+
+function Resolve-TesseractData {
+    param(
+        [string]$TesseractExe
+    )
+
+    if ($Config.TesseractData -and (Test-Path $Config.TesseractData)) {
+        return $Config.TesseractData
+    }
+
+    $candidates = @(
+        ".\\tools\\tesseract\\tessdata",
+        ".\\tools\\tessdata",
+        "C:\\Program Files\\Tesseract-OCR\\tessdata",
+        "C:\\Program Files (x86)\\Tesseract-OCR\\tessdata"
+    )
+
+    foreach ($p in $candidates) {
+        if (Test-Path $p) {
+            return $p
+        }
+    }
+
+    if ($TesseractExe) {
+        try {
+            $exeDir = Split-Path -Parent $TesseractExe
+            $tessdata = Join-Path $exeDir "tessdata"
+            if (Test-Path $tessdata) {
+                return $tessdata
+            }
+        }
+        catch { }
+    }
+
+    return $null
+}
+
 function Preflight-Checks {
     $ok = $true
 
     $gsExe = Resolve-GhostscriptExe
     if ($gsExe) {
         $Config.GhostscriptExe = $gsExe
+    }
+
+    $tessExe = Resolve-TesseractExe
+    if ($tessExe) {
+        $Config.TesseractExe = $tessExe
+        $tessData = Resolve-TesseractData -TesseractExe $tessExe
+        if ($tessData) {
+            $Config.TesseractData = $tessData
+        }
     }
 
     $ok = $ok -and (Assert-ToolExists -Path $Config.GhostscriptExe -ToolName "Ghostscript (gswin64c.exe)")
