@@ -6,6 +6,26 @@ $script:PatientCache = @{}
 $script:KIMCache = @{}
 $script:CacheTimestamp = $null
 
+function Read-Utf8TextFileCompat {
+    param(
+        [string]$Path
+    )
+
+    # Reason: PowerShell 2.0 lacks Import-Csv -Encoding; ensure we can reliably read UTF-8.
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    return [System.Text.Encoding]::UTF8.GetString($bytes)
+}
+
+function Split-CsvLineSimple {
+    param(
+        [string]$Line,
+        [string]$Delimiter = ';'
+    )
+
+    # Minimal CSV split for our mapping files (no embedded delimiters expected).
+    return $Line.Split(@($Delimiter))
+}
+
 function Import-PatientApoMapping {
     <#
     .SYNOPSIS
@@ -13,22 +33,21 @@ function Import-PatientApoMapping {
     #>
     try {
         Write-Log "Lade Patient-Apotheken Mapping: $($Config.PatientApoMapping)" -Status "INFO"
-        
-        # CSV einlesen mit Semikolon-Trennzeichen
-        $csvData = Import-Csv -Path $Config.PatientApoMapping -Delimiter ';' -Encoding UTF8
+
+        $text = Read-Utf8TextFileCompat -Path $Config.PatientApoMapping
+        $lines = $text -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
         
         # Cache erstellen: Key = "Nachname;Vorname;Geburtsdatum"
         $script:PatientCache = @{}
-        
-        foreach ($row in $csvData) {
-            # Spalten über Index abrufen (da CSV keine Header hat)
-            $columns = $row | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
-            
-            if ($columns.Count -ge 34) {
-                $lastName = $row.($columns[$CSVConfig.PatientLastNameColumn - 1])
-                $firstName = $row.($columns[$CSVConfig.PatientFirstNameColumn - 1])
-                $birthDate = $row.($columns[$CSVConfig.PatientBirthDateColumn - 1])
-                $apoKey = $row.($columns[$CSVConfig.ApoKeyColumn - 1])
+
+        foreach ($line in $lines) {
+            $cols = Split-CsvLineSimple -Line $line -Delimiter ';'
+
+            if ($cols.Length -ge $CSVConfig.ApoKeyColumn) {
+                $lastName = $cols[$CSVConfig.PatientLastNameColumn - 1]
+                $firstName = $cols[$CSVConfig.PatientFirstNameColumn - 1]
+                $birthDate = $cols[$CSVConfig.PatientBirthDateColumn - 1]
+                $apoKey = $cols[$CSVConfig.ApoKeyColumn - 1]
                 
                 # Bereinigen
                 $lastName = ($lastName -replace '\s+', ' ').Trim()
@@ -69,17 +88,45 @@ function Import-KIMApoMapping {
     #>
     try {
         Write-Log "Lade KIM-Apotheken Mapping: $($Config.KIMApoMapping)" -Status "INFO"
-        
-        # CSV einlesen
-        $csvData = Import-Csv -Path $Config.KIMApoMapping -Delimiter ';' -Encoding UTF8
+
+        $text = Read-Utf8TextFileCompat -Path $Config.KIMApoMapping
+        $lines = $text -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+        if ($lines.Count -lt 2) {
+            throw "CSV enthält keine Datenzeilen."
+        }
+
+        $headerCols = Split-CsvLineSimple -Line $lines[0] -Delimiter ';'
+        $headerIndex = @{}
+        for ($i = 0; $i -lt $headerCols.Length; $i++) {
+            $headerIndex[$headerCols[$i]] = $i
+        }
+
+        $idxApo = $null
+        $idxAddr = $null
+        $idxName = $null
+
+        if ($headerIndex.ContainsKey($CSVConfig.KIMApoColumn)) { $idxApo = $headerIndex[$CSVConfig.KIMApoColumn] }
+        if ($headerIndex.ContainsKey($CSVConfig.KIMAddrColumn)) { $idxAddr = $headerIndex[$CSVConfig.KIMAddrColumn] }
+        if ($headerIndex.ContainsKey($CSVConfig.KIMNameColumn)) { $idxName = $headerIndex[$CSVConfig.KIMNameColumn] }
+
+        if ($null -eq $idxApo -or $null -eq $idxAddr) {
+            throw "CSV Header fehlt: $($CSVConfig.KIMApoColumn) oder $($CSVConfig.KIMAddrColumn)"
+        }
         
         # Cache erstellen: Key = APO_KEY
         $script:KIMCache = @{}
-        
-        foreach ($row in $csvData) {
-            $apoKey = $row.$($CSVConfig.KIMApoColumn)
-            $kimAddr = $row.$($CSVConfig.KIMAddrColumn)
-            $apoName = $row.$($CSVConfig.KIMNameColumn)
+
+        for ($lineIdx = 1; $lineIdx -lt $lines.Count; $lineIdx++) {
+            $cols = Split-CsvLineSimple -Line $lines[$lineIdx] -Delimiter ';'
+
+            if ($cols.Length -le $idxAddr) {
+                continue
+            }
+
+            $apoKey = $cols[$idxApo]
+            $kimAddr = $cols[$idxAddr]
+            $apoName = if ($null -ne $idxName -and $cols.Length -gt $idxName) { $cols[$idxName] } else { "" }
             
             if ($apoKey -and $kimAddr) {
                 $script:KIMCache[$apoKey] = @{

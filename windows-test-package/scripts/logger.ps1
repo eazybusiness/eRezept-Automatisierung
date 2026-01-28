@@ -73,10 +73,15 @@ function Get-Sha256FileHashCompat {
     )
 
     # Prefer the built-in cmdlet when available (PS 4+), otherwise compute via .NET (PS 2 compatible).
-    $builtin = Get-Command Get-FileHash -ErrorAction SilentlyContinue
-    if ($builtin) {
-        $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
-        return $hash.Hash
+    $builtinCmdlet = Get-Command Get-FileHash -CommandType Cmdlet -ErrorAction SilentlyContinue
+    if ($builtinCmdlet) {
+        try {
+            $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
+            return $hash.Hash
+        }
+        catch {
+            # Reason: On older PowerShell versions the cmdlet may not exist; fall back to .NET.
+        }
     }
 
     $stream = $null
