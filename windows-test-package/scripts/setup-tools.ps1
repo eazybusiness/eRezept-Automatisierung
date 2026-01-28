@@ -1,6 +1,36 @@
 # Tools Setup Skript für eRezept-Automatisierung
 # Lädt Tesseract und Ghostscript herunter und konfiguriert die Pfade
 
+$ErrorActionPreference = "Stop"
+
+# PowerShell 2 compatible script root resolution
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$packageRoot = Split-Path -Parent $scriptRoot
+Set-Location $packageRoot
+
+. .\config\settings.ps1
+. .\scripts\logger.ps1
+
+if (-not (Get-Command Write-Log -ErrorAction SilentlyContinue)) {
+    function Write-Log {
+        param(
+            [string]$Message,
+            [string]$Status = "INFO"
+        )
+        Write-Host "[$Status] $Message"
+    }
+}
+
+try {
+    # Reason: Some environments require explicit TLS settings; best-effort only.
+    if ([System.Net.ServicePointManager]::SecurityProtocol) {
+        [System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192
+    }
+}
+catch {
+    # ignore
+}
+
 function Download-File {
     <#
     .SYNOPSIS
@@ -13,6 +43,7 @@ function Download-File {
     
     try {
         $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "eRezept-Automatisierung/1.0")
         Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action {
             $percent = $Event.SourceEventArgs.ProgressPercentage
             Write-Progress -Activity "Download" -Status "$percent% komplett" -PercentComplete $percent
@@ -24,8 +55,10 @@ function Download-File {
         
         return $true
     }
+
     catch {
         Write-Log "Fehler beim Download von $Url`: $($_.Exception.Message)" -Status "ERROR"
+        Write-Log "Hinweis: Windows Server 2008 R2 kann TLS/HTTPS blockieren. In dem Fall bitte die Datei auf einem modernen PC herunterladen und nach 'tools\\downloads\\' kopieren." -Status "ERROR"
         return $false
     }
 }
@@ -37,10 +70,19 @@ function Install-Tesseract {
     #>
     try {
         Write-Log "Installiere Tesseract OCR..." -Status "INFO"
+
+        if (-not (Test-Path $Config.ToolsFolder)) {
+            New-Item -ItemType Directory -Path $Config.ToolsFolder -Force | Out-Null
+        }
+
+        $downloadsFolder = Join-Path $Config.ToolsFolder "downloads"
+        if (-not (Test-Path $downloadsFolder)) {
+            New-Item -ItemType Directory -Path $downloadsFolder -Force | Out-Null
+        }
         
         # Tesseract Download URL (Windows 64-bit)
         $tesseractUrl = "https://github.com/UB-Mannheim/tesseract/wiki/download/tesseract-ocr-w64-setup-5.3.3.20231005.exe"
-        $tesseractInstaller = Join-Path $env:TEMP "tesseract-installer.exe"
+        $tesseractInstaller = Join-Path $downloadsFolder "tesseract-installer.exe"
         
         # Download
         if (-not (Download-File -Url $tesseractUrl -OutputPath $tesseractInstaller)) {
@@ -82,9 +124,7 @@ function Install-Tesseract {
     }
     finally {
         # Installer aufräumen
-        if (Test-Path $tesseractInstaller) {
-            Remove-Item $tesseractInstaller -Force
-        }
+        # Keep installers in tools\downloads for offline/manual troubleshooting
     }
 }
 
@@ -95,10 +135,19 @@ function Install-Ghostscript {
     #>
     try {
         Write-Log "Installiere Ghostscript..." -Status "INFO"
+
+        if (-not (Test-Path $Config.ToolsFolder)) {
+            New-Item -ItemType Directory -Path $Config.ToolsFolder -Force | Out-Null
+        }
+
+        $downloadsFolder = Join-Path $Config.ToolsFolder "downloads"
+        if (-not (Test-Path $downloadsFolder)) {
+            New-Item -ItemType Directory -Path $downloadsFolder -Force | Out-Null
+        }
         
         # Ghostscript Download URL (Windows 64-bit)
         $ghostscriptUrl = "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10030/gs10030w64.exe"
-        $ghostscriptInstaller = Join-Path $env:TEMP "ghostscript-installer.exe"
+        $ghostscriptInstaller = Join-Path $downloadsFolder "ghostscript-installer.exe"
         
         # Download
         if (-not (Download-File -Url $ghostscriptUrl -OutputPath $ghostscriptInstaller)) {
@@ -132,9 +181,7 @@ function Install-Ghostscript {
     }
     finally {
         # Installer aufräumen
-        if (Test-Path $ghostscriptInstaller) {
-            Remove-Item $ghostscriptInstaller -Force
-        }
+        # Keep installers in tools\downloads for offline/manual troubleshooting
     }
 }
 
@@ -234,4 +281,24 @@ function Install-AllTools {
         Write-Log "Fehler bei der Installation: $($_.Exception.Message)" -Status "ERROR"
         return $false
     }
+}
+
+Write-Host "eRezept-Automatisierung - Tool Setup" -ForegroundColor Green
+Write-Host "Pfad: $packageRoot" -ForegroundColor Gray
+Write-Host "ToolsFolder: $($Config.ToolsFolder)" -ForegroundColor Gray
+
+try {
+    $ok = Install-AllTools
+    if ($ok) {
+        Write-Host "Tools erfolgreich installiert." -ForegroundColor Green
+        exit 0
+    }
+
+    Write-Host "Tools Installation unvollständig. Prüfe logs/ und tools/downloads/." -ForegroundColor Red
+    exit 1
+}
+catch {
+    Write-Host "Tools Setup Fehler: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Falls Downloads blockiert sind: lade die Installer auf einem modernen PC herunter und kopiere sie nach tools\\downloads\\." -ForegroundColor Yellow
+    exit 1
 }

@@ -13,9 +13,9 @@ $Config = @{
     PatientApoMapping = ".\\local-data\\patient_apo_mapping.csv"
     KIMApoMapping = ".\\local-data\\KIM_apo_mapping.csv"
 
-    TesseractExe = ".\tools\tesseract.exe"
-    TesseractData = ".\tools\tessdata"
-    GhostscriptExe = ".\tools\gswin64c.exe"
+    TesseractExe = ".\tools\tesseract\tesseract.exe"
+    TesseractData = ".\tools\tesseract\tessdata"
+    GhostscriptExe = ".\tools\ghostscript\bin\gswin64c.exe"
 }
 
 $CSVConfig = @{
