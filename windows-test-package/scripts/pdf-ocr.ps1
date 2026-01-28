@@ -126,16 +126,16 @@ function Extract-PatientNameFromPDF {
         # Schritt 3: Regex-Patterns für Patientendaten
         $patterns = @(
             # Pattern 1: "Für Max Mustermann geboren am 15.01.1945"
-            "Für\s+(?<name>[A-ZäöüÄÖÜ][a-zäöüß]+(?:\s+[A-ZäöüÄÖÜ][a-zäöüß]+)+)\s+geboren\s+am\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
+            "F\u00FCr\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+)\s+geboren\s+am\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
             
             # Pattern 2: "Patient: Mustermann, Max geb. 15.01.1945"
-            "Patient:\s+(?<name>[A-ZäöüÄÖÜ][a-zäöüß]+(?:\s+[A-ZäöüÄÖÜ][a-zäöüß]+),\s+[A-ZäöüÄÖÜ][a-zäöüß]+)\s+geb\.\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
+            "Patient:\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+),\s+\p{Lu}\p{Ll}+)\s+geb\.\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
             
             # Pattern 3: "Name: Max Mustermann, DOB: 15.01.1945"
-            "Name:\s+(?<name>[A-ZäöüÄÖÜ][a-zäöüß]+(?:\s+[A-ZäöüÄÖÜ][a-zäöüß]+))[,\s]*Geburtsdatum[:\s]+(?<datum>\d{2}\.\d{2}\.\d{4})",
+            "Name:\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+))[,\s]*Geburtsdatum[:\s]+(?<datum>\d{2}\.\d{2}\.\d{4})",
             
             # Pattern 4: Nur Name, Datum separat suchen
-            "(?s)Für\s+(?<name>[A-ZäöüÄÖÜ][a-zäöüß]+(?:\s+[A-ZäöüÄÖÜ][a-zäöüß]+)+).*?(?:geboren\s+am|geb\.\s*|Geburtsdatum[:\s]*)\s*(?<datum>\d{2}\.\d{2}\.\d{4})"
+            "(?s)F\u00FCr\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+).*?(?:geboren\s+am|geb\.\s*|Geburtsdatum[:\s]*)\s*(?<datum>\d{2}\.\d{2}\.\d{4})"
         )
         
         # Debug: OCR-Output in Log schreiben (nur erste 500 Zeichen)
@@ -158,7 +158,7 @@ function Extract-PatientNameFromPDF {
         }
         
         # Fallback: Name und Datum getrennt suchen
-        $namePattern = "Für\s+([A-ZäöüÄÖÜ][a-zäöüß]+(?:\s+[A-ZäöüÄÖÜ][a-zäöüß]+)+)"
+        $namePattern = "F\u00FCr\s+(\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+)"
         $datePattern = "(?:geboren\s+am|geb\.\s*|Geburtsdatum[:\s]*)\s*(\d{2}\.\d{2}\.\d{4})"
         
         $nameMatch = [regex]::Match($ocrText, $namePattern)
@@ -200,9 +200,9 @@ function Test-PDFQuality {
     }
     
     # Einfache Qualitätschecks
-    $hasGermanChars = $Text -match '[äöüÄÖÜß]'
+    $hasGermanChars = $Text -match '[\u00E4\u00F6\u00FC\u00C4\u00D6\u00DC\u00DF]'
     $hasNumbers = $Text -match '\d'
-    $hasValidWords = $Text -match '\b(Für|Patient|Name|geboren|Geburtsdatum)\b'
+    $hasValidWords = $Text -match ('\b(F\u00FCr|Patient|Name|geboren|Geburtsdatum)\b')
     
     return $hasGermanChars -and $hasNumbers -and $hasValidWords
 }

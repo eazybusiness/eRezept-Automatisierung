@@ -1,6 +1,100 @@
 # Logging Modul für eRezept-Automatisierung
 # JSONL-basiertes Logging mit Audit-Trail
 
+function ConvertTo-JsonLineCompat {
+    param(
+        [hashtable]$Object
+    )
+
+    # PowerShell 2.0 does not provide ConvertTo-Json. Fall back to a minimal JSON serializer.
+    if (Get-Command ConvertTo-Json -ErrorAction SilentlyContinue) {
+        return ($Object | ConvertTo-Json -Compress)
+    }
+
+    function Escape-JsonString {
+        param([string]$Value)
+
+        if ($null -eq $Value) { return "" }
+        return ($Value -replace "\\", "\\\\" -replace '"', '\\"' -replace "\r", "" -replace "\n", "\\n")
+    }
+
+    $parts = @()
+    foreach ($key in $Object.Keys) {
+        $val = $Object[$key]
+
+        if ($null -eq $val) {
+            $parts += ('"{0}":null' -f (Escape-JsonString $key))
+        }
+        elseif ($val -is [bool]) {
+            $parts += ('"{0}":{1}' -f (Escape-JsonString $key), ($(if ($val) { 'true' } else { 'false' })))
+        }
+        elseif ($val -is [int] -or $val -is [long] -or $val -is [double] -or $val -is [decimal]) {
+            $parts += ('"{0}":{1}' -f (Escape-JsonString $key), $val)
+        }
+        else {
+            $parts += ('"{0}":"{1}"' -f (Escape-JsonString $key), (Escape-JsonString ([string]$val)))
+        }
+    }
+
+    return ('{' + ($parts -join ',') + '}')
+}
+
+function ConvertFrom-JsonLineCompat {
+    param(
+        [string]$Line
+    )
+
+    # PowerShell 2.0 does not provide ConvertFrom-Json. Fall back to a minimal parser
+    # extracting only the fields we need for duplicate detection.
+    if (Get-Command ConvertFrom-Json -ErrorAction SilentlyContinue) {
+        return ($Line | ConvertFrom-Json)
+    }
+
+    $result = @{}
+    if ([string]::IsNullOrEmpty($Line)) {
+        return $result
+    }
+
+    $mHash = [regex]::Match($Line, '"file_hash"\s*:\s*"(?<v>[^"]*)"')
+    if ($mHash.Success) { $result.file_hash = $mHash.Groups['v'].Value }
+
+    $mStatus = [regex]::Match($Line, '"status"\s*:\s*"(?<v>[^"]*)"')
+    if ($mStatus.Success) { $result.status = $mStatus.Groups['v'].Value }
+
+    $mTs = [regex]::Match($Line, '"timestamp"\s*:\s*"(?<v>[^"]*)"')
+    if ($mTs.Success) { $result.timestamp = $mTs.Groups['v'].Value }
+
+    return $result
+}
+
+function Get-Sha256FileHashCompat {
+    param(
+        [string]$FilePath
+    )
+
+    # Prefer the built-in cmdlet when available (PS 4+), otherwise compute via .NET (PS 2 compatible).
+    $builtin = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($builtin) {
+        $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
+        return $hash.Hash
+    }
+
+    $stream = $null
+    try {
+        $stream = [System.IO.File]::OpenRead($FilePath)
+        $sha = New-Object System.Security.Cryptography.SHA256Managed
+        $bytes = $sha.ComputeHash($stream)
+        $hex = New-Object System.Text.StringBuilder
+        foreach ($b in $bytes) {
+            $null = $hex.AppendFormat('{0:x2}', $b)
+        }
+        return $hex.ToString().ToUpperInvariant()
+    }
+    finally {
+        if ($stream) { $stream.Dispose() }
+    }
+}
+
 function Write-Log {
     <#
     .SYNOPSIS
@@ -48,15 +142,15 @@ function Write-Log {
             $logEntry[$_.Key] = $_.Value
         }
         
-        # In JSON konvertieren
-        $jsonLine = $logEntry | ConvertTo-Json -Compress
+        # In JSON konvertieren (PS2-compatible fallback)
+        $jsonLine = ConvertTo-JsonLineCompat -Object $logEntry
         
         # In Log-Datei schreiben (append-only)
         $logFile = Join-Path $Config.LogFolder "erezept_$(Get-Date -Format 'yyyy-MM-dd').jsonl"
         Add-Content -Path $logFile -Value $jsonLine -Encoding UTF8
         
         # Bei bestimmten Status auch in Konsole ausgeben
-        if ($Status -in @("ERROR", "WARN")) {
+        if (@("ERROR", "WARN") -contains $Status) {
             Write-Host "[$Status] $Message" -ForegroundColor $(if ($Status -eq "ERROR") { "Red" } else { "Yellow" })
         }
         
@@ -116,8 +210,7 @@ function Get-FileHash {
     param([string]$FilePath)
     
     try {
-        $hash = Microsoft.PowerShell.Utility\Get-FileHash -Path $FilePath -Algorithm $ProcessingConfig.HashAlgorithm
-        return $hash.Hash
+        return (Get-Sha256FileHashCompat -FilePath $FilePath)
     }
     catch {
         Write-Log "Fehler bei Hash-Berechnung für $FilePath`: $($_.Exception.Message)" -Status "ERROR"
@@ -150,8 +243,8 @@ function Test-DuplicateFile {
             $content = Get-Content -Path $logFile.FullName -Encoding UTF8
             foreach ($line in $content) {
                 try {
-                    $entry = $line | ConvertFrom-Json
-                    if ($entry.file_hash -eq $FileHash -and $entry.status -in @($LogConfig.Status_SENT, $LogConfig.Status_ROUTED, $LogConfig.Status_COMPLETED)) {
+                    $entry = ConvertFrom-JsonLineCompat -Line $line
+                    if ($entry.file_hash -eq $FileHash -and @($LogConfig.Status_SENT, $LogConfig.Status_ROUTED, $LogConfig.Status_COMPLETED) -contains $entry.status) {
                         Write-Log "Duplikat erkannt: Hash $FileHash bereits verarbeitet am $($entry.timestamp)" -Status "INFO"
                         return $true
                     }

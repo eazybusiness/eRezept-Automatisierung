@@ -13,12 +13,13 @@ This folder is a **self-contained test package** intended to be copied to a Wind
 
 ## Folder overview
 
-- `inbox/` - drop test PDFs here
+- `local-inbox/` - drop real customer PDFs here (local only)
 - `pharmacies/` - routed PDFs per APO_KEY
 - `sent/` - processed (sent or dry-run) PDFs
 - `unklar/` - PDFs that could not be matched
 - `logs/` - JSONL logs
-- `data/` - CSV mapping files
+- `local-data/` - drop real customer mapping CSVs here (local only)
+- `data/` - sample mapping files (committed)
 - `tools/` - OCR tools (Tesseract + Ghostscript)
 
 ## 1) Copy to Windows
@@ -45,6 +46,12 @@ Set-Location "C:\Users\<you>\Downloads\windows-test-package"
 .\run-test.ps1
 ```
 
+If PowerShell refuses to run scripts due to policy restrictions, use the launcher:
+
+```cmd
+run-test.cmd
+```
+
 Stop with:
 
 - `Ctrl + C`
@@ -61,7 +68,10 @@ If they are missing, the script will log errors and routing will likely fail.
 
 ## 5) Test cycle
 
-- Put a few test PDFs into `inbox/`
+- Put real customer PDFs into `local-inbox/`
+- Put real customer mappings into `local-data/`:
+  - `patient_apo_mapping.csv`
+  - `KIM_apo_mapping.csv`
 - Watch `logs/` for status updates
 - Check moved files in `pharmacies/`, `unklar/`, `sent/`
 

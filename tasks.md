@@ -15,6 +15,7 @@
 - [x] **Dry-Run/NoSend**: `EnableSend = $false` als Default, damit im Test keine E-Mails versendet werden
 - [x] **Test-SMTP Host**: Default auf `testserver`, produktiver Host bleibt auskommentiert
 - [ ] **Test-Checkliste**: Dokumentieren wie man den Testmodus auf Windows Server 2008 R2 ausführt
+ - [x] **PS2 Encoding Robustness**: Regex-Patterns ohne direkte Umlaute (Unicode-Escapes), um ParserErrors auf Server 2008 R2 zu vermeiden
 
 ### 1.2 Entwicklungsumgebung vorbereiten
 - [ ] PowerShell Core auf Linux installieren (für Syntax-Check)

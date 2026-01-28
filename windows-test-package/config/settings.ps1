@@ -1,17 +1,17 @@
 # eRezept-Automatisierung - Test Configuration (relative paths)
 
 $Config = @{
-    InputFolder = ".\inbox"
-    PharmacyBaseFolder = ".\pharmacies"
-    UnklarFolder = ".\unklar"
-    SentFolder = ".\sent"
-    LogFolder = ".\logs"
-    TempFolder = ".\temp"
+    InputFolder = ".\\local-inbox"
+    PharmacyBaseFolder = ".\\pharmacies"
+    UnklarFolder = ".\\unklar"
+    SentFolder = ".\\sent"
+    LogFolder = ".\\logs"
+    TempFolder = ".\\temp"
 
     ToolsFolder = ".\tools"
 
-    PatientApoMapping = ".\data\patient_apo_mapping.csv"
-    KIMApoMapping = ".\data\KIM_apo_mapping.csv"
+    PatientApoMapping = ".\\local-data\\patient_apo_mapping.csv"
+    KIMApoMapping = ".\\local-data\\KIM_apo_mapping.csv"
 
     TesseractExe = ".\tools\tesseract.exe"
     TesseractData = ".\tools\tessdata"
@@ -75,5 +75,5 @@ $ErrorConfig = @{
     RetryDelaySeconds = 2
     EnableErrorNotifications = $true
 
-    DeadLetterFolder = ".\deadletter"
+    DeadLetterFolder = ".\\deadletter"
 }
