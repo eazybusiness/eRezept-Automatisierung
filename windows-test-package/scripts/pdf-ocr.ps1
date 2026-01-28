@@ -16,14 +16,19 @@ function Rotate-PDF {
     )
     
     try {
+        $gsOutputArg = "-sOutputFile=$OutputPath"
+        if ($OutputPath -match "\s") {
+            $gsOutputArg = "-sOutputFile=`"$OutputPath`""
+        }
+
         # Ghostscript Befehl zum Rotieren
         $gsArgs = @(
             "-sDEVICE=pdfwrite",
-            "-sOutputFile=$OutputPath",
+            $gsOutputArg,
             "-dNOPAUSE",
             "-dBATCH",
             "-dAutoRotatePages=/None",
-            "-c", "<</Install {90}>> setpagedevice",
+            "-c", "<</Install {90 rotate}>> setpagedevice",
             "-f", $Path
         )
         

@@ -228,8 +228,13 @@ function Process-InboxOnce {
         try {
             Write-Log "Verarbeite Datei: $($pdf.FullName)" -Status "INFO"
 
+            if (-not $pdf.FullName -or -not (Test-Path $pdf.FullName)) {
+                Write-Log "Eingabedatei nicht gefunden (überspringe): $($pdf.FullName)" -Status $LogConfig.Status_ERROR
+                continue
+            }
+
             $fileHash = Get-FileHash -FilePath $pdf.FullName
-            if (-not $fileHash) {
+            if (-not $fileHash -or [string]::IsNullOrWhiteSpace($fileHash)) {
                 Write-Log "Hash-Berechnung fehlgeschlagen: $($pdf.FullName)" -Status $LogConfig.Status_ERROR
                 continue
             }
