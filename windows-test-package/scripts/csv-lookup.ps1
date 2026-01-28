@@ -171,11 +171,8 @@ function Get-PharmacyForPatient {
             Import-PatientApoMapping | Out-Null
         }
         
-        # Verschiedene Namensformate probieren
-        $nameVariants = New-Object System.Collections.Generic.List[string]
-
-        # Variante 1: Voller Name wie geliefert
-        $null = $nameVariants.Add("$PatientName;$BirthDate")
+        # Verschiedene Namensformate probieren (PS2-safe array)
+        $nameVariants = @("$PatientName;$BirthDate")
 
         # Variante 2/3: Wenn Name in "Vorname Nachname" aufteilbar ist
         if ($PatientName -match '^(.+?)\s+(\S+)$') {
@@ -183,9 +180,9 @@ function Get-PharmacyForPatient {
             $last  = $matches[2]
 
             # Nachname;Vorname;Datum
-            $null = $nameVariants.Add("$last;$first;$BirthDate")
+            $nameVariants += "$last;$first;$BirthDate"
             # Vorname Nachname;Datum
-            $null = $nameVariants.Add("$first $last;$BirthDate")
+            $nameVariants += "$first $last;$BirthDate"
         }
         
         foreach ($variant in $nameVariants) {

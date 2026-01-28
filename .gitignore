@@ -10,7 +10,6 @@ __pycache__/
 *.pyc
 
 # Local runtime/test folders
-input/
 logs/
 temp/
 tools/

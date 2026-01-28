@@ -159,7 +159,7 @@ function Write-Log {
         Add-Content -Path $logFile -Value $jsonLine -Encoding UTF8
         
         # Bei bestimmten Status auch in Konsole ausgeben
-        if (@("ERROR", "WARN") -contains $Status) {
+        if ($Status -eq "ERROR" -or $Status -eq "WARN") {
             Write-Host "[$Status] $Message" -ForegroundColor $(if ($Status -eq "ERROR") { "Red" } else { "Yellow" })
         }
         
@@ -253,7 +253,8 @@ function Test-DuplicateFile {
             foreach ($line in $content) {
                 try {
                     $entry = ConvertFrom-JsonLineCompat -Line $line
-                    if ($entry.file_hash -eq $FileHash -and @($LogConfig.Status_SENT, $LogConfig.Status_ROUTED, $LogConfig.Status_COMPLETED) -contains $entry.status) {
+                    $isProcessedStatus = ($entry.status -eq $LogConfig.Status_SENT -or $entry.status -eq $LogConfig.Status_ROUTED -or $entry.status -eq $LogConfig.Status_COMPLETED)
+                    if ($entry.file_hash -eq $FileHash -and $isProcessedStatus) {
                         Write-Log "Duplikat erkannt: Hash $FileHash bereits verarbeitet am $($entry.timestamp)" -Status "INFO"
                         return $true
                     }
@@ -353,7 +354,7 @@ function Get-LogStatistics {
             
             foreach ($line in $content) {
                 try {
-                    $entry = $line | ConvertFrom-Json
+                    $entry = ConvertFrom-JsonLineCompat -Line $line
                     
                     # Status zählen
                     if (-not $stats.StatusCounts.ContainsKey($entry.status)) {

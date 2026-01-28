@@ -1,0 +1,60 @@
+
+Wir möchte den aktuellen eRezept-Workflow aus dem Arztsystem heraus deutlich vereinfachen und dabei Fehlerquellen (Übersehen, Doppelversand, manuelles Sortieren) reduzieren. 
+Kurz zum Ist: Nach Freigabe erzeugt PDFCreator serverseitig PDFs mit eindeutigen Namen, die MFA manuell in apothekenspezifische Unterordner verschieben und anschließend in Arztprogramm per KIM-Nachricht anhängen/versenden.
+Das erzeugt leider Fehler und ist ungenau. 
+Wir benötigen ein Script, welches den Patientennamen aus der PDF extrahiert und anhand einer Exceltabelle die dazugehörige Apotheke ermittelt und das PDF dann in diesen Unterordner verschiebt.
+Gewünschte Scriptsprache ist PowerShell
+Im Script sollen die einzelnen Schritte gut und verständlich dokumentiert sein.
+Alle Pfade sollen relativ sein und am Anfang des Scripts in einer Variablen festlegbar sein.
+Das Script soll als Dienst laufen, NSSM vorhanden.
+
+
+
+STEP 1
+
+Lese die PDF-Datei(en) aus dem Ordner C:\Daten\ERP\Heim_INBOX
+Die PDF-Dateien haben den Dateinamen ERP_NEURO_JJJJ-MM-DD_{ID}.pdf
+
+Lese aus der PDF-Datei den Namen und das Geburtsdatum des Patienten aus. Quelle soll das Feld "Für" und "geboren am" oder der QR-Code sein.
+
+Anhand des Patientennamens und -datum suche in der Tabelle C:\Daten\ERP\patient_apo_mapping.csv nach der passenden Apotheke. 
+Die Apotheke ist in der Spalte "34" zu finden, der Patientenname in der Spalte "4" (Vorname) und Spalte "2" (Nachname)  
+das Format ist immer: APO_{NAME} (wir nennen das den APO_KEY)
+
+Für jeden APO_KEY soll es einen Unterordner im Ordner C:\Daten\ERP\Heim\Apotheken geben. Der Ordner soll immer so heißen wie der APO_KEY ist, also APO_{NAME}
+
+Das PDF soll jetzt nach Abgleich des Patienten und Ermitteln der passenden Apotheke in den jeweiligen Unterordner verschoben werden. Gibt es den passenden Ordner APO_KEY noch nicht soll er erstellt werden.
+
+Verschiebe PDF nach C:\Daten\ERP\Heim\UNKLAR wenn keine Zuordnung möglich ist (z. B. Patient fehlt in der Excel Tabelle oder hat mehrere Einträge) und schicke eine E-Mail mit Betreff: Zuordnung fehlgeschlagen, Text: Zuordnung ERP-Heim für Patient {Patientenname} ist fehlgeschlagen
+
+Logging: im Ordner C:\Daten\ERP\Heim_LOGGING Audit-/Revisionsnähe: append-only Log (z. B. JSONL) mit SHA-256 pro PDF, Timestamp, ApoKey, Patient-Identifier (datensparsam), Status (ROUTED/SENT/DUPLICATE_BLOCKED/UNKLAR). Zusätzlich Doppelversand-Schutz über Hash.
+
+
+STEP 2
+
+Voll- oder teilautomatisierter Versand über kv.dox (Domain kv.dox.kim.telematik). Hintergrundidee: KIM-Versand über SMTP via kv.dox Clientmodul/Proxy (headless Senderdienst), pro Apotheke aus dem jeweiligen Unterordner nach APO_KEY.
+
+Mail-Adresse (KIM-Adresse) Kommt aus Exceldatei: KIM_APO: {ApoKey} | KIM_ADDR: {kim-adresse} | APO_NAME: {Klarname} C:\Daten\ERP\KIM_apo_mapping.csv
+
+Erfolg → Move nach C:\Daten\ERP\Heim_SENT\APO_{NAME}  und Logging 
+Misserfolg: Logging und schicke eine E-Mail mit Betreff: Versand fehlgeschlagen, Text: Versand ERP-Heim für Patient {Patientenname} {APO_KEY} ist fehlgeschlagen
+
+
+SONSTIGES
+
+Versandmöglichkeiten über einen KIM-Client und die Möglichkeiten des Direktversands müssen noch geprüft werden.
+
+Gewünschte Scriptsprache ist PowerShell
+
+Im Script sollen die einzelnen Schritte gut und verständlich dokumentiert sein.
+
+Alle Pfade sollen relativ sein und am Anfang des Scripts in einer Variablen festlegbar sein.
+
+Das Script soll als Dienst laufen, NSSM vorhanden.
+
+
+
+
+
+
+

@@ -8,6 +8,35 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $scriptRoot
 
+# PS2 Encoding Preflight: Detect mis-decoded UTF-8 source files
+function Test-SourceEncoding {
+    $testFiles = @(
+        ".\scripts\pdf-ocr.ps1",
+        ".\scripts\logger.ps1",
+        ".\scripts\csv-lookup.ps1"
+    )
+    
+    foreach ($file in $testFiles) {
+        if (Test-Path $file) {
+            $content = [System.IO.File]::ReadAllText((Resolve-Path $file).Path)
+            # Check for common UTF-8 mojibake patterns (e.g., "Ã¼" instead of "ü")
+            if ($content -match "(\xC3\xBC|\xC3\xA4|\xC3\xB6|Ã¼|Ã¤|Ã¶|FÃ¼r)") {
+                Write-Host "[FATAL] Encoding-Problem erkannt in: $file" -ForegroundColor Red
+                Write-Host "Die Datei wurde vermutlich falsch kopiert (UTF-8 als Latin-1 interpretiert)." -ForegroundColor Yellow
+                Write-Host "Loesung: Kopiere die Dateien erneut mit einem Tool das UTF-8 korrekt behandelt." -ForegroundColor Yellow
+                return $false
+            }
+        }
+    }
+    return $true
+}
+
+if (-not (Test-SourceEncoding)) {
+    Write-Host ""
+    Write-Host "Abbruch wegen Encoding-Fehler. Siehe oben." -ForegroundColor Red
+    exit 1
+}
+
 . .\config\settings.ps1
 
 # Load modules (dot-source)
