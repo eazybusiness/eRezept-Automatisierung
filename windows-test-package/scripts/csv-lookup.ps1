@@ -35,7 +35,7 @@ function Import-PatientApoMapping {
         Write-Log "Lade Patient-Apotheken Mapping: $($Config.PatientApoMapping)" -Status "INFO"
 
         $text = Read-Utf8TextFileCompat -Path $Config.PatientApoMapping
-        $lines = $text -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $lines = $text -split "\r?\n" | Where-Object { $_ -and ($_.Trim() -ne "") }
         
         # Cache erstellen: Key = "Nachname;Vorname;Geburtsdatum"
         $script:PatientCache = @{}
@@ -90,7 +90,7 @@ function Import-KIMApoMapping {
         Write-Log "Lade KIM-Apotheken Mapping: $($Config.KIMApoMapping)" -Status "INFO"
 
         $text = Read-Utf8TextFileCompat -Path $Config.KIMApoMapping
-        $lines = $text -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $lines = $text -split "\r?\n" | Where-Object { $_ -and ($_.Trim() -ne "") }
 
         if ($lines.Count -lt 2) {
             throw "CSV enthält keine Datenzeilen."

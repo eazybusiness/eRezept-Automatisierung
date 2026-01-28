@@ -16,6 +16,35 @@ Set-Location $scriptRoot
 . .\scripts\pdf-ocr.ps1
 . .\scripts\email-sender.ps1
 
+function Assert-ToolExists {
+    param(
+        [string]$Path,
+        [string]$ToolName
+    )
+
+    if (-not $Path -or -not (Test-Path $Path)) {
+        Write-Host "[ERROR] Fehlt: $ToolName ($Path)" -ForegroundColor Red
+        return $false
+    }
+
+    return $true
+}
+
+function Preflight-Checks {
+    $ok = $true
+
+    $ok = $ok -and (Assert-ToolExists -Path $Config.GhostscriptExe -ToolName "Ghostscript (gswin64c.exe)")
+    $ok = $ok -and (Assert-ToolExists -Path $Config.TesseractExe -ToolName "Tesseract (tesseract.exe)")
+
+    if (-not $ok) {
+        Write-Host "" -ForegroundColor Red
+        Write-Host "Bitte stelle sicher, dass die Tools unter 'tools\\' im Testpaket liegen (oder passe config\\settings.ps1 an)." -ForegroundColor Yellow
+        return $false
+    }
+
+    return $true
+}
+
 function Initialize-TestDirectories {
     param([hashtable]$Config)
 
@@ -132,6 +161,10 @@ Write-Host "Testmodus: EnableSend=$($KIMConfig.EnableSend)  SmtpServer=$($KIMCon
 Write-Host "Lege Test-PDFs in: $($Config.InputFolder)" -ForegroundColor Cyan
 
 Initialize-TestDirectories -Config $Config
+
+if (-not (Preflight-Checks)) {
+    exit 1
+}
 
 # Initialize caches (CSV)
 $null = Initialize-CSVCache

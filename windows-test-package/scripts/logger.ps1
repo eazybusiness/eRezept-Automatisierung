@@ -72,6 +72,10 @@ function Get-Sha256FileHashCompat {
         [string]$FilePath
     )
 
+    if ([string]::IsNullOrEmpty($FilePath)) {
+        return $null
+    }
+
     # Prefer the built-in cmdlet when available (PS 4+), otherwise compute via .NET (PS 2 compatible).
     $builtinCmdlet = Get-Command Get-FileHash -CommandType Cmdlet -ErrorAction SilentlyContinue
     if ($builtinCmdlet) {
