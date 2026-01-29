@@ -10,11 +10,17 @@
   - [x] Check OCR output in `temp/ocr_debug_*.txt` files
   - [x] Adjust regex patterns to match actual OCR output
   - [x] Fix patient name extraction (was extracting doctor name instead)
+  - [x] Fix CSV column mapping (was using wrong columns for Name/Vorname/APO_KEY)
   - [ ] Test with all 5 patient PDFs
   - [ ] Confirm pharmacy mapping structure with client
 
 ## Completed (2026-01-29)
 
+- [x] **Critical Bug Fix: CSV Column Mapping**:
+  - Analyzed customer CSV structure vs config settings
+  - Root cause: columns were off by 1 (Name=col3 not col2, Vorname=col5 not col4, APO_KEY=col35 not col34)
+  - Fixed `settings.ps1` with correct column indices
+  - Note: "Bernd Messerschmidt" from PDF doesn't exist in CSV (only "Christa Messerschmidt") - expected behavior
 - [x] **Critical Bug Fix: Patient Name Extraction**:
   - Analyzed OCR debug output from Windows test runs
   - Identified root cause: regex was extracting doctor name (Tobias Frank) instead of patient name
