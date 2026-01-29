@@ -152,7 +152,8 @@ function Extract-PatientNameFromPDF {
         Write-Log "OCR-Output (erste 500 Zeichen): $($ocrText.Substring(0, [Math]::Min(500, $ocrText.Length)))" -Status "INFO"
         
         # Strategie: Text zwischen "für geboren am" und "ausgestellt von" extrahieren
-        $sectionPattern = "(?s)f\u00FCr\s+geboren\s+am\s*\\?\s*[\r\n]+(.*?)(?:[\r\n]+.*?ausgestellt\s+von|$)"
+        # Muss auch "für \n geboren am" (auf separaten Zeilen) unterstützen
+        $sectionPattern = "(?s)f\u00FCr\s*[\r\n]*\s*geboren\s+am\s*\\?\s*[\r\n]+(.*?)(?:[\r\n]+.*?ausgestellt\s+von|$)"
         
         if ($ocrText -match $sectionPattern) {
             $patientSection = $matches[1]

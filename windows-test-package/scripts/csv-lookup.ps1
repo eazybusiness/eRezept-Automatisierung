@@ -40,7 +40,16 @@ function Import-PatientApoMapping {
         # Cache erstellen: Key = "Nachname;Vorname;Geburtsdatum"
         $script:PatientCache = @{}
 
+        $lineNumber = 0
         foreach ($line in $lines) {
+            $lineNumber++
+            
+            # Skip header row (first line)
+            if ($lineNumber -eq 1) {
+                Write-Log "Überspringe Header-Zeile" -Status "DEBUG"
+                continue
+            }
+            
             $cols = Split-CsvLineSimple -Line $line -Delimiter ';'
 
             if ($cols.Length -ge $CSVConfig.ApoKeyColumn) {
