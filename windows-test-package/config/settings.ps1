@@ -19,10 +19,11 @@ $Config = @{
 }
 
 $CSVConfig = @{
-    PatientLastNameColumn = 2
-    PatientFirstNameColumn = 4
+    # Verified from customer CSV: col3=Name, col5=Vorname, col6=Geburtsdatum, col35=Inhalt (APO_KEY)
+    PatientLastNameColumn = 3
+    PatientFirstNameColumn = 5
     PatientBirthDateColumn = 6
-    ApoKeyColumn = 34
+    ApoKeyColumn = 35
 
     KIMApoColumn = "KIM_APO"
     KIMAddrColumn = "KIM_ADDR"
