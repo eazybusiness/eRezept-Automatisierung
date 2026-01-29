@@ -184,11 +184,28 @@ function Preflight-Checks {
         $tessData = Resolve-TesseractData -TesseractExe $tessExe
         if ($tessData) {
             $Config.TesseractData = $tessData
+            # Set TESSDATA_PREFIX environment variable for Tesseract
+            $env:TESSDATA_PREFIX = $tessData
+            Write-Host "TESSDATA_PREFIX gesetzt auf: $tessData" -ForegroundColor Green
         }
     }
 
     $ok = $ok -and (Assert-ToolExists -Path $Config.GhostscriptExe -ToolName "Ghostscript (gswin64c.exe)")
     $ok = $ok -and (Assert-ToolExists -Path $Config.TesseractExe -ToolName "Tesseract (tesseract.exe)")
+
+    # Check for German language data
+    if ($Config.TesseractData) {
+        $deuFile = Join-Path $Config.TesseractData "deu.traineddata"
+        if (-not (Test-Path $deuFile)) {
+            Write-Host "[WARNUNG] Deutsche Sprachdaten fehlen: $deuFile" -ForegroundColor Yellow
+            Write-Host "Tesseract kann ohne deu.traineddata keine deutschen Texte erkennen." -ForegroundColor Yellow
+            Write-Host "Download: https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata" -ForegroundColor Gray
+            Write-Host "Kopiere die Datei nach: $($Config.TesseractData)" -ForegroundColor Gray
+            $ok = $false
+        } else {
+            Write-Host "Deutsche Sprachdaten gefunden: $deuFile" -ForegroundColor Green
+        }
+    }
 
     if (-not $ok) {
         Write-Host "" -ForegroundColor Red
@@ -262,7 +279,7 @@ function Process-InboxOnce {
                 continue
             }
 
-            $fileHash = Get-FileHash -FilePath $pdf.FullName
+            $fileHash = Get-PDFFileHash -FilePath $pdf.FullName
             if (-not $fileHash -or [string]::IsNullOrWhiteSpace($fileHash)) {
                 Write-Log "Hash-Berechnung fehlgeschlagen: $($pdf.FullName)" -Status $LogConfig.Status_ERROR
                 continue

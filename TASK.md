@@ -1,20 +1,45 @@
 # TASKS
 
-## Active Work (Windows Server 2008 R2 test package)
+## Active Work (Windows 10 VM Testing)
 
-- [ ] **(Next)** Test on Windows 2008 R2:
-  - [ ] Run `diagnose.cmd` first to verify environment.
-  - [ ] If encoding errors: re-copy files using 7-Zip or direct USB (no Windows ZIP).
-  - [ ] Install Ghostscript + Tesseract if missing.
-  - [ ] Place CSV files in `local-data/` folder.
-  - [ ] Place test PDFs in `local-inbox/` folder.
-  - [ ] Run `run-test.cmd` and check `logs/` for output.
+- [ ] **(Next)** Final testing and pharmacy mapping confirmation:
+  - [x] Set up Windows 10 VM with VirtualBox
+  - [x] Install Ghostscript and Tesseract
+  - [x] Install German language data (deu.traineddata)
+  - [x] Fix PDF-to-image conversion (Tesseract can't read PDFs directly)
+  - [x] Check OCR output in `temp/ocr_debug_*.txt` files
+  - [x] Adjust regex patterns to match actual OCR output
+  - [x] Fix patient name extraction (was extracting doctor name instead)
+  - [ ] Test with all 5 patient PDFs
+  - [ ] Confirm pharmacy mapping structure with client
 
-## Completed
+## Completed (2026-01-29)
 
+- [x] **Critical Bug Fix: Patient Name Extraction**:
+  - Analyzed OCR debug output from Windows test runs
+  - Identified root cause: regex was extracting doctor name (Tobias Frank) instead of patient name
+  - Implemented section-based extraction: only search between "für geboren am" and "ausgestellt von"
+  - Added safety filter to skip names containing "Frank", "Dr.", "med."
+  - Created test package v2 with fixes
+  - Documented changes in CHANGELOG.md and TESTING_NOTES.md
+
+## Completed (2025-01-28)
+
+- [x] **Windows 10 VM Setup**:
+  - Set up VirtualBox VM with Windows 10 Enterprise Evaluation
+  - Configured HTTP server for file transfer (bypassing VirtualBox sharing issues)
+  - Installed Ghostscript 10.06.0 and Tesseract OCR
+  - Installed German language data (deu.traineddata)
+- [x] **PowerShell 5.1 Compatibility Fixes**:
+  - Renamed `Get-FileHash` to `Get-PDFFileHash` (collision with built-in cmdlet)
+  - Set `TESSDATA_PREFIX` environment variable automatically
+  - Added check for German language data with helpful error messages
+- [x] **PDF Processing Pipeline**:
+  - Removed broken Ghostscript rotation (GS 10.x syntax incompatibility)
+  - Implemented PDF-to-PNG conversion (300 DPI) before OCR
+  - Tesseract now processes PNG images instead of PDFs directly
+  - Added OCR debug output to `temp/ocr_debug_*.txt` files
 - [x] Fix Ghostscript output argument: use `-sOutputFile=...` (instead of `-o`).
-- [x] Fix Ghostscript rotation procedure to avoid `/typecheck`:
-  - Use `<</Install {90 rotate}>> setpagedevice`.
 - [x] Harden hash handling so empty/invalid paths don’t produce confusing failures.
 - [x] **(2025-01-28)** Add PS2-safe encoding preflight in `run-test.ps1`:
   - Detects mis-decoded UTF-8 (e.g. `FÃ¼r`) and aborts with guidance.

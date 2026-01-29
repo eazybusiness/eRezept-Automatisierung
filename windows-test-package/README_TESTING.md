@@ -36,7 +36,52 @@ In `cmd.exe`:
 powershell -Command "$PSVersionTable.PSVersion"
 ```
 
-## 3) Run (one command)
+## 3) Install required tools
+
+### 1. Ghostscript (for PDF processing)
+**Installation:**
+- Download: https://ghostscript.com/releases/gsdnld.html
+- Choose: "Ghostscript AGPL Release" → Windows 64-bit
+- Install in standard path: `C:\Program Files\gs\`
+- The script will find Ghostscript automatically
+
+**Or from the package:**
+```cmd
+tools\downloads\ghostscript-installer.exe
+```
+
+### 2. Tesseract OCR (for text recognition)
+**Installation:**
+- Download: https://github.com/UB-Mannheim/tesseract/wiki
+- Choose: Windows Installer (64-bit)
+- Install in standard path: `C:\Program Files\Tesseract-OCR\`
+- The script will find Tesseract automatically
+
+**Or from the package:**
+```cmd
+tools\downloads\tesseract-installer.exe
+```
+
+### 3. German language data for Tesseract
+**IMPORTANT**: Without this file, Tesseract cannot recognize German text!
+
+**Option 1 - Copy from package (fastest method):**
+```powershell
+Copy-Item "tools\downloads\deu.traineddata" "C:\Program Files\Tesseract-OCR\tessdata\deu.traineddata"
+```
+
+**Option 2 - Download from GitHub:**
+```powershell
+Invoke-WebRequest -Uri "https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata" -OutFile "C:\Program Files\Tesseract-OCR\tessdata\deu.traineddata"
+```
+
+**Check:**
+```powershell
+Test-Path "C:\Program Files\Tesseract-OCR\tessdata\deu.traineddata"
+# Should return "True"
+```
+
+## 4) Run (one command)
 
 Open PowerShell and run:
 

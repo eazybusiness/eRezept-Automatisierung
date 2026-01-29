@@ -16,37 +16,22 @@ function Rotate-PDF {
     )
     
     try {
-        $gsOutputArg = "-sOutputFile=$OutputPath"
-        if ($OutputPath -match "\s") {
-            $gsOutputArg = "-sOutputFile=`"$OutputPath`""
-        }
-
-        # Ghostscript Befehl zum Rotieren
-        $gsArgs = @(
-            "-sDEVICE=pdfwrite",
-            $gsOutputArg,
-            "-dNOPAUSE",
-            "-dBATCH",
-            "-dAutoRotatePages=/None",
-            "-c", "<</Install {90 rotate}>> setpagedevice",
-            "-f", $Path
-        )
+        # For now, skip rotation and work with original PDF
+        # Tesseract can handle rotated text with --psm 0 (auto orientation detection)
+        Write-Log "Kopiere PDF (Rotation wird von Tesseract gehandhabt): $Path" -Status "INFO"
         
-        Write-Log "Rotiere PDF: $Path" -Status "INFO"
+        Copy-Item -Path $Path -Destination $OutputPath -Force
         
-        # Ghostscript ausführen
-        $process = Start-Process -FilePath $Config.GhostscriptExe -ArgumentList $gsArgs -Wait -PassThru -NoNewWindow
-        
-        if ($process.ExitCode -eq 0 -and (Test-Path $OutputPath)) {
-            Write-Log "PDF erfolgreich rotiert: $OutputPath" -Status "INFO"
+        if (Test-Path $OutputPath) {
+            Write-Log "PDF bereit für OCR: $OutputPath" -Status "INFO"
             return $OutputPath
         } else {
-            Write-Log "Fehler bei PDF-Rotation: ExitCode $($process.ExitCode)" -Status "ERROR"
+            Write-Log "Fehler beim Kopieren der PDF" -Status "ERROR"
             return $null
         }
     }
     catch {
-        Write-Log "Fehler bei PDF-Rotation: $($_.Exception.Message)" -Status "ERROR"
+        Write-Log "Fehler bei PDF-Vorbereitung: $($_.Exception.Message)" -Status "ERROR"
         return $null
     }
 }
@@ -61,30 +46,57 @@ function Extract-TextFromPDF {
     param([string]$Path)
     
     try {
-        # Temporäre Datei für OCR-Output
+        # Temporäre Dateien
+        $tempPng = Join-Path $env:TEMP "pdf_page_$(Get-Random).png"
         $tempTxt = Join-Path $env:TEMP "ocr_$(Get-Random).txt"
         
-        # Tesseract Befehl
+        # Schritt 1: PDF zu PNG mit Ghostscript konvertieren
+        Write-Log "Konvertiere PDF zu Bild: $Path" -Status "INFO"
+        
+        $gsArgs = @(
+            "-sDEVICE=png16m",
+            "-dTextAlphaBits=4",
+            "-dGraphicsAlphaBits=4",
+            "-r300",  # 300 DPI für gute OCR-Qualität
+            "-dFirstPage=1",
+            "-dLastPage=1",
+            "-sOutputFile=$tempPng",
+            "-dNOPAUSE",
+            "-dBATCH",
+            "-dSAFER",
+            $Path
+        )
+        
+        $gsProcess = Start-Process -FilePath $Config.GhostscriptExe -ArgumentList $gsArgs -Wait -PassThru -NoNewWindow
+        
+        if ($gsProcess.ExitCode -ne 0 -or -not (Test-Path $tempPng)) {
+            Write-Log "Fehler bei PDF-zu-Bild Konvertierung: ExitCode $($gsProcess.ExitCode)" -Status "ERROR"
+            return $null
+        }
+        
+        # Schritt 2: OCR auf PNG-Bild mit Tesseract
+        Write-Log "Führe OCR durch auf Bild" -Status "INFO"
+        
         $tessArgs = @(
-            $Path,
+            $tempPng,
             $tempTxt.Replace('.txt', ''),  # Tesseract fügt .txt automatisch hinzu
             "-l", $ProcessingConfig.OCRLanguage,
-            "--psm", "6",  # Uniform block of text
+            "--psm", "1",  # Automatic page segmentation with OSD (handles rotation)
             "--oem", "3"   # Default OCR engine mode
         )
         
-        Write-Log "Führe OCR durch: $Path" -Status "INFO"
+        $tessProcess = Start-Process -FilePath $Config.TesseractExe -ArgumentList $tessArgs -Wait -PassThru -NoNewWindow
         
-        # Tesseract ausführen
-        $process = Start-Process -FilePath $Config.TesseractExe -ArgumentList $tessArgs -Wait -PassThru -NoNewWindow
+        # Aufräumen: PNG löschen
+        Remove-Item $tempPng -Force -ErrorAction SilentlyContinue
         
-        if ($process.ExitCode -eq 0 -and (Test-Path $tempTxt)) {
+        if ($tessProcess.ExitCode -eq 0 -and (Test-Path $tempTxt)) {
             $text = Get-Content -Path $tempTxt -Encoding UTF8 -Raw
             Remove-Item $tempTxt -Force -ErrorAction SilentlyContinue
             Write-Log "OCR erfolgreich, Textlänge: $($text.Length)" -Status "INFO"
             return $text
         } else {
-            Write-Log "Fehler bei OCR: ExitCode $($process.ExitCode)" -Status "ERROR"
+            Write-Log "Fehler bei OCR: ExitCode $($tessProcess.ExitCode)" -Status "ERROR"
             return $null
         }
     }
@@ -129,28 +141,29 @@ function Extract-PatientNameFromPDF {
         }
         
         # Schritt 3: Regex-Patterns für Patientendaten
-        $patterns = @(
-            # Pattern 1: "Für Max Mustermann geboren am 15.01.1945"
-            "F\u00FCr\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+)\s+geboren\s+am\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
-            
-            # Pattern 2: "Patient: Mustermann, Max geb. 15.01.1945"
-            "Patient:\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+),\s+\p{Lu}\p{Ll}+)\s+geb\.\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
-            
-            # Pattern 3: "Name: Max Mustermann, DOB: 15.01.1945"
-            "Name:\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+))[,\s]*Geburtsdatum[:\s]+(?<datum>\d{2}\.\d{2}\.\d{4})",
-            
-            # Pattern 4: Nur Name, Datum separat suchen
-            "(?s)F\u00FCr\s+(?<name>\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+).*?(?:geboren\s+am|geb\.\s*|Geburtsdatum[:\s]*)\s*(?<datum>\d{2}\.\d{2}\.\d{4})"
-        )
+        # WICHTIG: Patient kommt NACH "für geboren am" auf der NÄCHSTEN Zeile!
+        # Format: "( für geboren am \" gefolgt von neuer Zeile mit "Vorname Nachname DD.MM.YYYY"
+        # KRITISCH: Muss VOR "ausgestellt von" stoppen, sonst wird Arztname extrahiert!
         
-        # Debug: OCR-Output in Log schreiben (nur erste 500 Zeichen)
-        Write-Log "OCR-Output (erste 500 Zeichen): $($ocrText.Substring(0, [Math]::Min(500, $ocrText.Length)))" -Status "DEBUG"
+        # Debug: OCR-Output vollständig in Datei speichern
+        $debugFile = Join-Path $Config.TempFolder "ocr_debug_$(Get-Random).txt"
+        $ocrText | Out-File -FilePath $debugFile -Encoding UTF8
+        Write-Log "OCR-Output gespeichert in: $debugFile" -Status "INFO"
+        Write-Log "OCR-Output (erste 500 Zeichen): $($ocrText.Substring(0, [Math]::Min(500, $ocrText.Length)))" -Status "INFO"
         
-        # Pattern durchtesten
-        foreach ($pattern in $patterns) {
-            if ($ocrText -match $pattern) {
-                $name = $matches['name'].Trim()
-                $datum = $matches['datum'].Trim()
+        # Strategie: Text zwischen "für geboren am" und "ausgestellt von" extrahieren
+        $sectionPattern = "(?s)f\u00FCr\s+geboren\s+am\s*\\?\s*[\r\n]+(.*?)(?:[\r\n]+.*?ausgestellt\s+von|$)"
+        
+        if ($ocrText -match $sectionPattern) {
+            $patientSection = $matches[1]
+            Write-Log "Patient-Sektion extrahiert: $($patientSection.Substring(0, [Math]::Min(100, $patientSection.Length)))" -Status "DEBUG"
+            
+            # In dieser Sektion nach Name + Datum suchen
+            $namePattern = "([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(\d{2}\.\d{2}\.\d{4})"
+            
+            if ($patientSection -match $namePattern) {
+                $name = $matches[1].Trim()
+                $datum = $matches[2].Trim()
                 
                 Write-Log "Patient gefunden: Name='$name', Geburtsdatum='$datum'" -Status "INFO"
                 
@@ -162,23 +175,32 @@ function Extract-PatientNameFromPDF {
             }
         }
         
-        # Fallback: Name und Datum getrennt suchen
-        $namePattern = "F\u00FCr\s+(\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+)"
-        $datePattern = "(?:geboren\s+am|geb\.\s*|Geburtsdatum[:\s]*)\s*(\d{2}\.\d{2}\.\d{4})"
-        
-        $nameMatch = [regex]::Match($ocrText, $namePattern)
-        $dateMatch = [regex]::Match($ocrText, $datePattern)
-        
-        if ($nameMatch.Success -and $dateMatch.Success) {
-            $name = $nameMatch.Groups[1].Value.Trim()
-            $datum = $dateMatch.Groups[1].Value.Trim()
+        # Fallback: Direktes Pattern mit negativem Lookahead für "ausgestellt von"
+        $patterns = @(
+            # Pattern 1: Nach "für geboren am" bis zum ersten Name+Datum, aber nicht nach "ausgestellt"
+            "(?s)f\u00FCr\s+geboren\s+am\s*[^\r\n]*[\r\n]+\s*(?<name>[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?<datum>\d{2}\.\d{2}\.\d{4})",
             
-            Write-Log "Patient gefunden (Fallback): Name='$name', Geburtsdatum='$datum'" -Status "INFO"
-            
-            return @{
-                Name = $name
-                BirthDate = $datum
-                FullName = "$name ($datum)"
+            # Pattern 2: Flexibler - nach "für geboren am" mindestens 5 Zeichen Abstand vor Name
+            "(?s)f\u00FCr\s+geboren\s+am.{5,50}?(?<name>[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?<datum>\d{2}\.\d{2}\.\d{4})"
+        )
+        
+        foreach ($pattern in $patterns) {
+            if ($ocrText -match $pattern) {
+                $name = $matches['name'].Trim()
+                $datum = $matches['datum'].Trim()
+                
+                # Sicherheitscheck: Ist das wirklich ein Patient und nicht der Arzt?
+                if ($name -notmatch "Frank|Dr\.|med\.") {
+                    Write-Log "Patient gefunden (Fallback): Name='$name', Geburtsdatum='$datum'" -Status "INFO"
+                    
+                    return @{
+                        Name = $name
+                        BirthDate = $datum
+                        FullName = "$name ($datum)"
+                    }
+                } else {
+                    Write-Log "Arztname erkannt und übersprungen: $name" -Status "DEBUG"
+                }
             }
         }
         

@@ -47,13 +47,21 @@ function Import-PatientApoMapping {
                 $lastName = $cols[$CSVConfig.PatientLastNameColumn - 1]
                 $firstName = $cols[$CSVConfig.PatientFirstNameColumn - 1]
                 $birthDate = $cols[$CSVConfig.PatientBirthDateColumn - 1]
-                $apoKey = $cols[$CSVConfig.ApoKeyColumn - 1]
+                $sozialanamnese = $cols[$CSVConfig.ApoKeyColumn - 1]
                 
                 # Bereinigen
                 $lastName = ($lastName -replace '\s+', ' ').Trim()
                 $firstName = ($firstName -replace '\s+', ' ').Trim()
                 $birthDate = ($birthDate -replace '\s+', ' ').Trim()
-                $apoKey = ($apoKey -replace '\s+', ' ').Trim()
+                
+                # APO_KEY aus Sozialanamnese extrahieren (Format: APO_XXXXX)
+                $apoKey = $null
+                if ($sozialanamnese -match '(APO_[A-Z_]+)') {
+                    $apoKey = $matches[1]
+                } else {
+                    # Fallback: gesamten Text verwenden (falls kein APO_ Pattern)
+                    $apoKey = ($sozialanamnese -replace '\s+', ' ').Trim()
+                }
                 
                 if ($lastName -and $firstName -and $birthDate -and $apoKey) {
                     # Mehrere Keys für Flexibilität
@@ -172,26 +180,36 @@ function Get-PharmacyForPatient {
         }
         
         # Verschiedene Namensformate probieren (PS2-safe array)
-        $nameVariants = @("$PatientName;$BirthDate")
+        $nameVariants = @()
 
-        # Variante 2/3: Wenn Name in "Vorname Nachname" aufteilbar ist
+        # Variante 1: Wenn Name in "Vorname Nachname" aufteilbar ist
         if ($PatientName -match '^(.+?)\s+(\S+)$') {
             $first = $matches[1]
             $last  = $matches[2]
 
-            # Nachname;Vorname;Datum
+            # Nachname;Vorname;Datum (wichtigste Variante für CSV!)
             $nameVariants += "$last;$first;$BirthDate"
             # Vorname Nachname;Datum
             $nameVariants += "$first $last;$BirthDate"
+            # Nachname Vorname;Datum
+            $nameVariants += "$last $first;$BirthDate"
+        } else {
+            # Fallback: Name wie er ist
+            $nameVariants += "$PatientName;$BirthDate"
         }
+        
+        Write-Log "Suche Apotheke für Patient: '$PatientName' ($BirthDate)" -Status "INFO"
+        Write-Log "Probiere Varianten: $($nameVariants -join ' | ')" -Status "DEBUG"
         
         foreach ($variant in $nameVariants) {
             if ($script:PatientCache.ContainsKey($variant)) {
                 $apoKey = $script:PatientCache[$variant]
-                Write-Log "Apotheke gefunden für '$PatientName' ($BirthDate): $apoKey" -Status "INFO"
+                Write-Log "Apotheke gefunden mit Variante '$variant': $apoKey" -Status "INFO"
                 return $apoKey
             }
         }
+        
+        Write-Log "Keine exakte Übereinstimmung gefunden. Cache hat $($script:PatientCache.Count) Einträge." -Status "DEBUG"
         
         # Fallback: Teilweise Suche (nur wenn Geburtsdatum eindeutig)
         $matchingPatients = $script:PatientCache.Keys | Where-Object { $_ -like "*$BirthDate" }

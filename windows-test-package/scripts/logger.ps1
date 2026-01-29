@@ -207,7 +207,7 @@ function Invoke-LogRotation {
     }
 }
 
-function Get-FileHash {
+function Get-PDFFileHash {
     <#
     .SYNOPSIS
         Berechnet SHA-256 Hash für Duplikatschutz
