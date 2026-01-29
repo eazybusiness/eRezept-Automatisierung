@@ -20,8 +20,14 @@
   - Identified root cause: regex was extracting doctor name (Tobias Frank) instead of patient name
   - Implemented section-based extraction: only search between "für geboren am" and "ausgestellt von"
   - Added safety filter to skip names containing "Frank", "Dr.", "med."
+  - Fixed regex to handle "für" and "geboren am" on separate lines (Astrid Pföhler case)
   - Created test package v2 with fixes
   - Documented changes in CHANGELOG.md and TESTING_NOTES.md
+- [x] **Critical Bug Fix: CSV Pharmacy Lookup**:
+  - Identified root cause: CSV header row was not being skipped during cache building
+  - First line "Datum;Patientennummer;Name..." was treated as data instead of header
+  - Added header row skip logic in Import-PatientApoMapping function
+  - All 4 test patients now correctly found in CSV (Bernd Messerschmidt not in CSV)
 
 ## Completed (2025-01-28)
 
