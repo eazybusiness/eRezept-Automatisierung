@@ -10,8 +10,8 @@ $Config = @{
 
     ToolsFolder = ".\tools"
 
-    PatientApoMapping = ".\\local-data\\patient_apo_mapping.csv"
-    KIMApoMapping = ".\\local-data\\KIM_apo_mapping.csv"
+    PatientApoMapping = ".\\data\\patient_apo_mapping.csv"
+    KIMApoMapping = ".\\data\\KIM_apo_mapping.csv"
 
     TesseractExe = ".\tools\tesseract\tesseract.exe"
     TesseractData = ".\tools\tesseract\tessdata"
