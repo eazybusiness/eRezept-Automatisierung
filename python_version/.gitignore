@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Customer data (never commit)
+data/*.csv
+data/*.CSV
+input/*.pdf
+output/
+
+# Logs
+logs/
+
+# IDE
+.vscode/
+.idea/
